@@ -1,0 +1,39 @@
+name: Monthio Android Build
+on:
+  push:
+    branches: ["monthio-android-build-v1"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 36
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Restore Monthio source
+        run: |
+          mkdir -p .monthio-ci/android
+          cat .monthio-ci/part00 .monthio-ci/part01 .monthio-ci/part02 .monthio-ci/part03 .monthio-ci/part04 .monthio-ci/part05 | base64 -d > .monthio-ci/source.zip
+          unzip -q .monthio-ci/source.zip -d .monthio-ci/android
+      - name: Build debug APK
+        working-directory: .monthio-ci/android
+        run: gradle :app:assembleDebug --stacktrace
+      - name: Rename APK
+        run: |
+          mkdir -p .monthio-ci/android/dist
+          cp .monthio-ci/android/app/build/outputs/apk/debug/app-debug.apk .monthio-ci/android/dist/Monthio-Android-v1-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Monthio-Android-v1-APK
+          path: .monthio-ci/android/dist/Monthio-Android-v1-debug.apk
+          if-no-files-found: error
